@@ -1,1 +1,2 @@
 backend/images/*
+!backend/images/.gitkeep

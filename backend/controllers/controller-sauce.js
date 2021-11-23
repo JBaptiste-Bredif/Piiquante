@@ -4,8 +4,25 @@ const fs = require('fs')
 // GET 'api/sauces'
 exports.getAllSauces = (req, res, next) => {
   Sauce.find()
-    .then(sauces => res.status(200).json(sauces))
-    .catch(error => res.status(400).json({ error: error }))
+    .then(sauce => {
+      if (sauce == null) {
+        return res.status(404).json({ message: 'Sauce non trouvée' })
+      }
+      res.status(200).json(sauce)
+    })
+    .catch(error => res.status(404).json({ error: error }))
+}
+
+// GET 'api/sauces/:id'
+exports.getOneSauce = (req, res, next) => {
+  Sauce.findOne({ _id: req.params.id })
+    .then(sauce => {
+      if (sauce == null) {
+        return res.status(404).json({ message: 'Sauce non trouvée' })
+      }
+      res.status(200).json(sauce)
+    })
+    .catch(error => res.status(404).json({ error: error }))
 }
 
 // POST 'api/sauces' 
@@ -20,14 +37,6 @@ exports.createSauce = (req, res, next) => {
     .then(() => res.status(201).json({ message: 'Sauce enregistrée !' }))
     .catch(error => res.status(400).json({ error, message: 'Sauce non enregistrée !' }))
 }
-
-// GET 'api/sauces/:id'
-exports.getOneSauce = (req, res, next) => {
-  Sauce.findOne({ _id: req.params.id })
-    .then(sauce => res.status(200).json(sauce))
-    .catch(error => res.status(404).json({ error: error }))
-}
-
 
 // PUT 'api/sauces/:id'
 exports.modifySauce = (req, res, next) => {
@@ -75,6 +84,7 @@ exports.likeDislikeSauce = (req, res, next) => {
   if (dataPossible.includes(req.body.like)) {
     Sauce.findOne({ _id: req.params.id })
       .then(sauce => {
+        // Si 0, celà veut dire que le user avait déjà like ou dislike cette sauce, donc il doit être présent dans une array
         if (req.body.like === 0) {
           if (sauce.usersLiked.includes(req.body.userId)) {
             Sauce.updateOne({ _id: req.params.id }, { $pull: { usersLiked: req.body.userId }, $inc: { likes: -1 } })
@@ -87,6 +97,7 @@ exports.likeDislikeSauce = (req, res, next) => {
           } else {
             res.status(403).send({ error: 'Unauthorized Value' })
           }
+          // Si 1 ou -1, celà veut dire que le user n'avait jamais like ou dislike cette sauce, donc il doit être absent des deux array
         } else if (!sauce.usersLiked.includes(req.body.userId) && !sauce.usersDisliked.includes(req.body.userId)) {
           if (req.body.like === 1) {
             Sauce.updateOne({ _id: req.params.id }, { $inc: { likes: 1 }, $push: { usersLiked: req.body.userId } })

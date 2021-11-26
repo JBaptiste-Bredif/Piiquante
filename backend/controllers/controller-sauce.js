@@ -1,5 +1,6 @@
 const Sauce = require('../models/model-sauce')
 const fs = require('fs')
+const jwt = require('jsonwebtoken')
 
 // GET 'api/sauces'
 exports.getAllSauces = (req, res, next) => {
@@ -49,6 +50,9 @@ exports.modifySauce = (req, res, next) => {
           imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
         } : { ...req.body }
 
+      if (sauce.userId !== sauceObject.userId) {
+        return res.status(403).send({ error: 'Unauthorized Value' })
+      }
       if (req.file) {
         fs.unlink(`images/${filename}`, () => {
           Sauce.updateOne({ _id: req.params.id }, { ...sauceObject, _id: req.params.id })
@@ -68,6 +72,12 @@ exports.modifySauce = (req, res, next) => {
 exports.deleteSauce = (req, res, next) => {
   Sauce.findOne({ _id: req.params.id })
     .then(sauce => {
+      const token = req.headers.authorization.split(' ')[1]
+      const decodedToken = jwt.verify(token, `${process.env.TOKEN_KEY}`)
+      const userId = decodedToken.userId
+      if (sauce.userId && sauce.userId !== userId) {
+        return res.status(403).json({ message: 'Unauthorized request' })
+      }
       const filename = sauce.imageUrl.split('/images/')[1]
       fs.unlink(`images/${filename}`, () => {
         Sauce.deleteOne({ _id: req.params.id })
